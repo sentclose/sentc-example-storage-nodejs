@@ -1,10 +1,14 @@
 const express = require('express')
 const path = require("path");
 const fs = require("fs");
+const fs_p = require("fs/promises");
 const axios = require('axios');
+const {createReadStream} = require("fs");
+const {pipeline} = require("stream");
 require('dotenv').config()
 
 const app = express()
+
 const port = 3000
 
 async function registerPart(session_id, sequence, end, jwt)
@@ -22,6 +26,21 @@ async function registerPart(session_id, sequence, end, jwt)
 	} catch (e) {
 		console.log(e)
 	}
+}
+
+function deleteFiles(ids)
+{
+	const p = [];
+
+	const file_path = path.join(__dirname, "/uploads/");
+
+	for (let i = 0; i < ids; i++) {
+		const id = ids[i];
+
+		p.push(fs_p.unlink(file_path + id));
+	}
+
+	return Promise.allSettled(p);
 }
 
 //cors -.-
@@ -77,6 +96,38 @@ app.post("/file/:session_id/:sequence/:end", (req, res) => {
 		})
 	})
 });
+
+//the file get endpoint
+app.get("/file/:part_id",(req,res) => {
+	//cors -.-
+	res.setHeader("Access-Control-Allow-Origin", "*");
+	res.setHeader("Access-Control-Allow-Credentials", "true");
+	res.setHeader("Access-Control-Allow-Headers", "X-Requested-With, Content-Type, Accept, Origin, Authorization, x-sentc-app-token");
+
+	const part_id = req.params["part_id"];
+
+	const file_path = path.join(__dirname, "/uploads/"+part_id);
+
+	const rs = createReadStream(file_path);
+
+	//use pipeline here instead of pip from req.
+	pipeline(rs, res, (err) => {
+		if (!err) {
+			return;
+		}
+
+		console.log(err);
+	});
+});
+
+//the file delete endpoint
+app.post("/file_delete",express.json(), (req,res) => {
+	const files = req.body;
+
+	deleteFiles(files).then(() => {
+		res.status(200).send("done");
+	})
+})
 
 app.listen(port, () => {
 	console.log(`Example app listening on port ${port}`)

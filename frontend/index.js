@@ -34,6 +34,8 @@ async function main()
 		file_part_url: "http://localhost:3000/file"	// <-- your endpoint prefix for upload and download
 	});
 
+	console.log(sentc.options);
+
 	await sentc.register("username", "pw");
 
 	user = await sentc.login("username", "pw");
@@ -56,12 +58,23 @@ async function upload()
 
 async function download()
 {
+	const get_progress = (progress) => {
+		console.log("Download: " + progress);
+	};
 
+	const [url, file_data, content_key] = await user.downloadFile(file_id, "", get_progress);
+
+	const a = document.createElement("a");
+	a.download = file_data.file_name;
+	a.href = url;
+	a.click();
 }
 
 async function endTest()
 {
-	await user.deleteFile(file_id);
+	if (file_id) {
+		await user.deleteFile(file_id);
+	}
 
 	await user.deleteUser("pw");
 }
